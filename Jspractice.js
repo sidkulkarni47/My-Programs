@@ -1,164 +1,131 @@
-// 1. Despot some money
-// 2. Determine number of lines to bet on
-// 3. Collect a bet amount
-// 4. Spin the slot machine
-// 5. check if the user won
-// 6. give the user their winnings
-// 7. play again
+let label = document.getElementById("label");
+let ShoppingCart = document.getElementById("shopping-cart");
 
-const prompt = require("prompt-sync")();
+let basket = JSON.parse(localStorage.getItem("data")) || [];
 
-const ROWS = 3;
-const COLS = 3;
-
-const SYMBOLS_COUNT = {
-  A: 2,
-  B: 4,
-  C: 6,
-  D: 8,
+let calculation = () => {
+  let cartIcon = document.getElementById("cartAmount");
+  cartIcon.innerHTML = basket.map((x) => x.item).reduce((x, y) => x + y, 0);
 };
 
-const SYMBOL_VALUES = {
-  A: 5,
-  B: 4,
-  C: 3,
-  D: 2,
-};
+calculation();
 
-const deposit = () => {
-  while (true) {
-    const depositAmount = prompt("Enter a deposit amount: ");
-    const numberDepositAmount = parseFloat(depositAmount);
+let generateCartItems = () => {
+  if (basket.length !== 0) {
+    return (ShoppingCart.innerHTML = basket
+      .map((x) => {
+        let { id, item } = x;
+        let search = shopItemsData.find((y) => y.id === id) || [];
+        return `
+      <div class="cart-item">
+        <img width="100" src=${search.img} alt="" />
+        <div class="details">
 
-    if (isNaN(numberDepositAmount) || numberDepositAmount <= 0) {
-      console.log("Invalid deposit amount, try again.");
-    } else {
-      return numberDepositAmount;
-    }
+          <div class="title-price-x">
+              <h4 class="title-price">
+                <p>${search.name}</p>
+                <p class="cart-item-price">$ ${search.price}</p>
+              </h4>
+              <i onclick="removeItem(${id})" class="bi bi-x-lg"></i>
+          </div>
+
+          <div class="buttons">
+              <i onclick="decrement(${id})" class="bi bi-dash-lg"></i>
+              <div id=${id} class="quantity">${item}</div>
+              <i onclick="increment(${id})" class="bi bi-plus-lg"></i>
+          </div>
+
+          <h3>$ ${item * search.price}</h3>
+        </div>
+      </div>
+      `;
+      })
+      .join(""));
+  } else {
+    ShoppingCart.innerHTML = ``;
+    label.innerHTML = `
+    <h2>Cart is Empty</h2>
+    <a href="index.html">
+      <button class="HomeBtn">Back to home</button>
+    </a>
+    `;
   }
 };
 
-const getNumberOfLines = () => {
-  while (true) {
-    const lines = prompt("Enter the number of lines to bet on (1-3): ");
-    const numberOfLines = parseFloat(lines);
+generateCartItems();
 
-    if (isNaN(numberOfLines) || numberOfLines <= 0 || numberOfLines > 3) {
-      console.log("Invalid number of lines, try again.");
-    } else {
-      return numberOfLines;
-    }
+let increment = (id) => {
+  let selectedItem = id;
+  let search = basket.find((x) => x.id === selectedItem.id);
+
+  if (search === undefined) {
+    basket.push({
+      id: selectedItem.id,
+      item: 1,
+    });
+  } else {
+    search.item += 1;
   }
+
+  generateCartItems();
+  update(selectedItem.id);
+  localStorage.setItem("data", JSON.stringify(basket));
+};
+let decrement = (id) => {
+  let selectedItem = id;
+  let search = basket.find((x) => x.id === selectedItem.id);
+
+  if (search === undefined) return;
+  else if (search.item === 0) return;
+  else {
+    search.item -= 1;
+  }
+  update(selectedItem.id);
+  basket = basket.filter((x) => x.item !== 0);
+  generateCartItems();
+  localStorage.setItem("data", JSON.stringify(basket));
 };
 
-const getBet = (balance, lines) => {
-  while (true) {
-    const bet = prompt("Enter the bet per line: ");
-    const numberBet = parseFloat(bet);
-
-    if (isNaN(numberBet) || numberBet <= 0 || numberBet > balance / lines) {
-      console.log("Invalid bet, try again.");
-    } else {
-      return numberBet;
-    }
-  }
+let update = (id) => {
+  let search = basket.find((x) => x.id === id);
+  // console.log(search.item);
+  document.getElementById(id).innerHTML = search.item;
+  calculation();
+  TotalAmount();
 };
 
-const spin = () => {
-  const symbols = [];
-  for (const [symbol, count] of Object.entries(SYMBOLS_COUNT)) {
-    for (let i = 0; i < count; i++) {
-      symbols.push(symbol);
-    }
-  }
-
-  const reels = [];
-  for (let i = 0; i < COLS; i++) {
-    reels.push([]);
-    const reelSymbols = [...symbols];
-    for (let j = 0; j < ROWS; j++) {
-      const randomIndex = Math.floor(Math.random() * reelSymbols.length);
-      const selectedSymbol = reelSymbols[randomIndex];
-      reels[i].push(selectedSymbol);
-      reelSymbols.splice(randomIndex, 1);
-    }
-  }
-
-  return reels;
+let removeItem = (id) => {
+  let selectedItem = id;
+  // console.log(selectedItem.id);
+  basket = basket.filter((x) => x.id !== selectedItem.id);
+  generateCartItems();
+  TotalAmount();
+  localStorage.setItem("data", JSON.stringify(basket));
 };
 
-const transpose = (reels) => {
-  const rows = [];
-
-  for (let i = 0; i < ROWS; i++) {
-    rows.push([]);
-    for (let j = 0; j < COLS; j++) {
-      rows[i].push(reels[j][i]);
-    }
-  }
-
-  return rows;
+let clearCart = () => {
+  basket = [];
+  generateCartItems();
+  localStorage.setItem("data", JSON.stringify(basket));
 };
 
-const printRows = (rows) => {
-  for (const row of rows) {
-    let rowString = "";
-    for (const [i, symbol] of row.entries()) {
-      rowString += symbol;
-      if (i != row.length - 1) {
-        rowString += " | ";
-      }
-    }
-    console.log(rowString);
-  }
+let TotalAmount = () => {
+  if (basket.length !== 0) {
+    let amount = basket
+      .map((x) => {
+        let { item, id } = x;
+        let search = shopItemsData.find((y) => y.id === id) || [];
+
+        return item * search.price;
+      })
+      .reduce((x, y) => x + y, 0);
+    // console.log(amount);
+    label.innerHTML = `
+    <h2>Total Bill : $ ${amount}</h2>
+    <button class="checkout">Checkout</button>
+    <button onclick="clearCart()" class="removeAll">Clear Cart</button>
+    `;
+  } else return;
 };
 
-const getWinnings = (rows, bet, lines) => {
-  let winnings = 0;
-
-  for (let row = 0; row < lines; row++) {
-    const symbols = rows[row];
-    let allSame = true;
-
-    for (const symbol of symbols) {
-      if (symbol != symbols[0]) {
-        allSame = false;
-        break;
-      }
-    }
-
-    if (allSame) {
-      winnings += bet * SYMBOL_VALUES[symbols[0]];
-    }
-  }
-
-  return winnings;
-};
-
-const game = () => {
-  let balance = deposit();
-
-  while (true) {
-    console.log("You have a balance of $" + balance);
-    const numberOfLines = getNumberOfLines();
-    const bet = getBet(balance, numberOfLines);
-    balance -= bet * numberOfLines;
-    const reels = spin();
-    const rows = transpose(reels);
-    printRows(rows);
-    const winnings = getWinnings(rows, bet, numberOfLines);
-    balance += winnings;
-    console.log("You won, $" + winnings.toString());
-
-    if (balance <= 0) {
-      console.log("You ran out of money!");
-      break;
-    }
-
-    const playAgain = prompt("Do you want to play again (y/n)? ");
-
-    if (playAgain != "y") break;
-  }
-};
-
-game();
+TotalAmount();
